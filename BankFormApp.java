@@ -9,9 +9,7 @@ import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 // The main window. Extends Application because this is a JavaFX app. JavaFX
@@ -19,14 +17,17 @@ import java.util.Map;
 public class BankFormApp extends Application {
 
     // The input boxes the user types into
-    private TextField txtFName, txtLName, txtNIN, txtEmail, txtConfirmEmail, txtPhone, txtDeposit;
+    private TextField txtFName, txtLName, txtNIN, txtSecondNIN, txtEmail, txtConfirmEmail, txtPhone, txtDeposit;
     private PasswordField txtPIN, txtConfirmPIN;
     private ComboBox<Integer> comboYear, comboDay;
     private ComboBox<String> comboMonth, comboType, comboBranch;
     private TextArea areaSummary;
 
+    // The label for the second NIN, kept so we can hide it together with its box
+    private Label lblSecondNIN;
+
     // The red error messages shown next to each field
-    private Label errFName, errLName, errNIN, errEmail, errConfirmEmail, errPhone, errPIN, errConfirmPIN, errDOB, errType, errBranch, errDeposit;
+    private Label errFName, errLName, errNIN, errSecondNIN, errEmail, errConfirmEmail, errPhone, errPIN, errConfirmPIN, errDOB, errType, errBranch, errDeposit;
 
     // Counts how many accounts each branch has opened, so we can number them.
     // Key = branch code like "KLA", value = how many so far.
@@ -57,28 +58,36 @@ public class BankFormApp extends Application {
         txtNIN = new TextField(); grid.add(txtNIN, 1, 2);
         errNIN = new Label(); errNIN.setStyle("-fx-text-fill: red;"); grid.add(errNIN, 2, 2);
 
-        grid.add(new Label("Email:"), 0, 3);
-        txtEmail = new TextField(); grid.add(txtEmail, 1, 3);
-        errEmail = new Label(); errEmail.setStyle("-fx-text-fill: red;"); grid.add(errEmail, 2, 3);
+        // Second NIN sits right under the first one. Only used by Joint accounts,
+        // so it stays hidden until "Joint" is chosen (toggled further down).
+        lblSecondNIN = new Label("Second NIN:");
+        grid.add(lblSecondNIN, 0, 3);
+        txtSecondNIN = new TextField(); grid.add(txtSecondNIN, 1, 3);
+        errSecondNIN = new Label(); errSecondNIN.setStyle("-fx-text-fill: red;"); grid.add(errSecondNIN, 2, 3);
+        setSecondNINVisible(false); // start hidden
 
-        grid.add(new Label("Confirm Email:"), 0, 4);
-        txtConfirmEmail = new TextField(); grid.add(txtConfirmEmail, 1, 4);
-        errConfirmEmail = new Label(); errConfirmEmail.setStyle("-fx-text-fill: red;"); grid.add(errConfirmEmail, 2, 4);
+        grid.add(new Label("Email:"), 0, 4);
+        txtEmail = new TextField(); grid.add(txtEmail, 1, 4);
+        errEmail = new Label(); errEmail.setStyle("-fx-text-fill: red;"); grid.add(errEmail, 2, 4);
 
-        grid.add(new Label("Phone Number:"), 0, 5);
-        txtPhone = new TextField("+256"); grid.add(txtPhone, 1, 5);
-        errPhone = new Label(); errPhone.setStyle("-fx-text-fill: red;"); grid.add(errPhone, 2, 5);
+        grid.add(new Label("Confirm Email:"), 0, 5);
+        txtConfirmEmail = new TextField(); grid.add(txtConfirmEmail, 1, 5);
+        errConfirmEmail = new Label(); errConfirmEmail.setStyle("-fx-text-fill: red;"); grid.add(errConfirmEmail, 2, 5);
 
-        grid.add(new Label("PIN (4-6 digits):"), 0, 6);
-        txtPIN = new PasswordField(); grid.add(txtPIN, 1, 6);
-        errPIN = new Label(); errPIN.setStyle("-fx-text-fill: red;"); grid.add(errPIN, 2, 6);
+        grid.add(new Label("Phone Number:"), 0, 6);
+        txtPhone = new TextField("+256"); grid.add(txtPhone, 1, 6);
+        errPhone = new Label(); errPhone.setStyle("-fx-text-fill: red;"); grid.add(errPhone, 2, 6);
 
-        grid.add(new Label("Confirm PIN:"), 0, 7);
-        txtConfirmPIN = new PasswordField(); grid.add(txtConfirmPIN, 1, 7);
-        errConfirmPIN = new Label(); errConfirmPIN.setStyle("-fx-text-fill: red;"); grid.add(errConfirmPIN, 2, 7);
+        grid.add(new Label("PIN (4-6 digits):"), 0, 7);
+        txtPIN = new PasswordField(); grid.add(txtPIN, 1, 7);
+        errPIN = new Label(); errPIN.setStyle("-fx-text-fill: red;"); grid.add(errPIN, 2, 7);
+
+        grid.add(new Label("Confirm PIN:"), 0, 8);
+        txtConfirmPIN = new PasswordField(); grid.add(txtConfirmPIN, 1, 8);
+        errConfirmPIN = new Label(); errConfirmPIN.setStyle("-fx-text-fill: red;"); grid.add(errConfirmPIN, 2, 8);
 
         // Date of birth uses three dropdowns for year, month and day
-        grid.add(new Label("Date of Birth:"), 0, 8);
+        grid.add(new Label("Date of Birth:"), 0, 9);
         comboYear = new ComboBox<>(FXCollections.observableArrayList());
         comboYear.setPromptText("Year");
         comboYear.setPrefWidth(90);
@@ -105,29 +114,32 @@ public class BankFormApp extends Application {
 
         // Put the three dropdowns side by side
         HBox dobBox = new HBox(10, yearBox, monthBox, dayBox);
-        grid.add(dobBox, 1, 8);
-        errDOB = new Label(); errDOB.setStyle("-fx-text-fill: red;"); grid.add(errDOB, 2, 8);
+        grid.add(dobBox, 1, 9);
+        errDOB = new Label(); errDOB.setStyle("-fx-text-fill: red;"); grid.add(errDOB, 2, 9);
 
         // Account type and branch dropdowns
-        grid.add(new Label("Account Type:"), 0, 9);
+        grid.add(new Label("Account Type:"), 0, 10);
         comboType = new ComboBox<>(FXCollections.observableArrayList("Savings", "Current", "Fixed Deposit", "Student", "Joint"));
-        grid.add(comboType, 1, 9);
-        errType = new Label(); errType.setStyle("-fx-text-fill: red;"); grid.add(errType, 2, 9);
+        grid.add(comboType, 1, 10);
+        errType = new Label(); errType.setStyle("-fx-text-fill: red;"); grid.add(errType, 2, 10);
 
-        grid.add(new Label("Branch:"), 0, 10);
+        // Show or hide the second NIN box whenever the account type changes
+        comboType.setOnAction(e -> setSecondNINVisible("Joint".equals(comboType.getValue())));
+
+        grid.add(new Label("Branch:"), 0, 11);
         comboBranch = new ComboBox<>(FXCollections.observableArrayList("Kampala", "Gulu", "Mbarara", "Jinja", "Mbale"));
-        grid.add(comboBranch, 1, 10);
-        errBranch = new Label(); errBranch.setStyle("-fx-text-fill: red;"); grid.add(errBranch, 2, 10);
+        grid.add(comboBranch, 1, 11);
+        errBranch = new Label(); errBranch.setStyle("-fx-text-fill: red;"); grid.add(errBranch, 2, 11);
 
-        grid.add(new Label("Opening Deposit (UGX):"), 0, 11);
-        txtDeposit = new TextField(); grid.add(txtDeposit, 1, 11);
-        errDeposit = new Label(); errDeposit.setStyle("-fx-text-fill: red;"); grid.add(errDeposit, 2, 11);
+        grid.add(new Label("Opening Deposit (UGX):"), 0, 12);
+        txtDeposit = new TextField(); grid.add(txtDeposit, 1, 12);
+        errDeposit = new Label(); errDeposit.setStyle("-fx-text-fill: red;"); grid.add(errDeposit, 2, 12);
 
         // Buttons and the read-only summary box at the bottom
         Button btnSubmit = new Button("Submit");
         Button btnReset = new Button("Reset");
-        grid.add(btnSubmit, 0, 12);
-        grid.add(btnReset, 1, 12);
+        grid.add(btnSubmit, 0, 13);
+        grid.add(btnReset, 1, 13);
 
         areaSummary = new TextArea();
         areaSummary.setEditable(false);
@@ -145,6 +157,15 @@ public class BankFormApp extends Application {
         primaryStage.setScene(new Scene(mainLayout, 850, 750));
         primaryStage.show();
         handleSubmission();
+    }
+
+    // Shows or hides the second NIN row. setManaged(false) also makes the row
+    // collapse so it doesn't leave an empty gap when hidden.
+    private void setSecondNINVisible(boolean show) {
+        lblSecondNIN.setVisible(show);   lblSecondNIN.setManaged(show);
+        txtSecondNIN.setVisible(show);   txtSecondNIN.setManaged(show);
+        errSecondNIN.setVisible(show);   errSecondNIN.setManaged(show);
+        if (!show) txtSecondNIN.clear(); // don't keep a stale value when switching away
     }
 
     // Fills the day dropdown with the right number of days for the chosen month/year
@@ -166,12 +187,21 @@ public class BankFormApp extends Application {
         for (int i = 1; i <= days; i++) comboDay.getItems().add(i);
     }
 
+    // Puts a validator message on its error label. Returns true when the field is
+    // valid (empty message), false when there's an error, so callers can AND the
+    // results together to know if the whole form passed.
+    private boolean show(Label errorLabel, String message) {
+        errorLabel.setText(message);
+        return message.isEmpty();
+    }
+
     // Checks every field, and if all is well creates the account and saves it
     private void handleSubmission() {
         // Wipe any error messages from the last attempt
         errFName.setText("");
         errLName.setText("");
         errNIN.setText("");
+        errSecondNIN.setText("");
         errEmail.setText("");
         errConfirmEmail.setText("");
         errPhone.setText("");
@@ -182,98 +212,56 @@ public class BankFormApp extends Application {
         errBranch.setText("");
         errDeposit.setText("");
 
-        List<String> errors = new ArrayList<>();
+        // Tracks whether any field failed. The actual rules live in BankValidator.
+        boolean valid = true;
 
-        // Validate first and last names
+        // Names
         String fName = txtFName.getText() == null ? "" : txtFName.getText().trim();
         String lName = txtLName.getText() == null ? "" : txtLName.getText().trim();
+        valid &= show(errFName, BankValidator.name(fName));
+        valid &= show(errLName, BankValidator.name(lName));
 
-        if (fName.isEmpty()) {
-            errFName.setText("First Name is required.");
-            errors.add("First Name is required.");
-        } else if (!fName.matches("^[a-zA-Z]+$")) { // regex that matches lowercase and uppercase from a to z
-            errFName.setText("Letters only.");
-            errors.add("First Name must contain letters only.");
-        } else if (fName.length() < 2 || fName.length() > 30) {
-            errFName.setText("Must be 2-30 chars.");
-            errors.add("First Name must be between 2 and 30 characters.");
-        }
-
-        if (lName.isEmpty()) {
-            errLName.setText("Last Name is required.");
-            errors.add("Last Name is required.");
-        } else if (!lName.matches("^[a-zA-Z]+$")) {
-            errLName.setText("Letters only.");
-            errors.add("Last Name must contain letters only.");
-        } else if (lName.length() < 2 || lName.length() > 30) {
-            errLName.setText("Must be 2-30 chars.");
-            errors.add("Last Name must be between 2 and 30 characters.");
-        }
-
-        // Validate National ID (NIN)
+        // National ID
         String nin = txtNIN.getText() == null ? "" : txtNIN.getText().trim();
-        if (nin.isEmpty()) {
-            errNIN.setText("NIN is required.");
-            errors.add("National ID (NIN) is required.");
-        } else if (!nin.matches("^[A-Z0-9]{14}$")) { // exactly 14 uppercase alphanumeric characters
-            errNIN.setText("Exactly 14 uppercase alphanumeric chars.");
-            errors.add("National ID (NIN) must be exactly 14 alphanumeric uppercase characters.");
-        }
+        valid &= show(errNIN, BankValidator.nin(nin));
 
-        // Validate Email
+        // Email, then the confirm-email match check
         String email = txtEmail.getText() == null ? "" : txtEmail.getText().trim();
         String confirmEmail = txtConfirmEmail.getText() == null ? "" : txtConfirmEmail.getText().trim();
-        if (email.isEmpty()) {
-            errEmail.setText("Email is required.");
-            errors.add("Email is required.");
-        } else if (!email.matches("^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$")) { // regex that matches a valid email format,
-            errEmail.setText("Invalid email format.");
-            errors.add("Email is in an invalid format.");
+        String emailErr = BankValidator.email(email);
+        if (!emailErr.isEmpty()) {
+            valid &= show(errEmail, emailErr);
         } else if (!email.equals(confirmEmail)) {
-            errConfirmEmail.setText("Emails do not match.");
-            errors.add("Email and Confirm Email must match.");
+            valid &= show(errConfirmEmail, "Emails do not match.");
         }
 
-        // Validate Phone Number
+        // Phone
         String phone = txtPhone.getText() == null ? "" : txtPhone.getText().trim();
-        if (phone.isEmpty()) {
-            errPhone.setText("Phone is required.");
-            errors.add("Phone Number is required.");
-        } else if (!phone.matches("^\\+256\\d{9}$")) {
-            errPhone.setText("Must follow +256XXXXXXXXX.");
-            errors.add("Phone Number must follow the Ugandan format +256XXXXXXXXX (9 digits after +256).");
-        }
+        valid &= show(errPhone, BankValidator.phone(phone));
 
-        // Validate PIN
+        // PIN, then the confirm-PIN match check
         String pin = txtPIN.getText() == null ? "" : txtPIN.getText();
         String confirmPin = txtConfirmPIN.getText() == null ? "" : txtConfirmPIN.getText();
-        if (pin.isEmpty()) {
-            errPIN.setText("PIN is required.");
-            errors.add("PIN is required.");
-        } else if (!pin.matches("^\\d{4,6}$")) {
-            errPIN.setText("Must be 4-6 digits.");
-            errors.add("PIN must be numeric only and between 4 and 6 digits.");
-        } else if (pin.chars().distinct().count() == 1) {
-            errPIN.setText("Must not be identical digits.");
-            errors.add("PIN must not consist of all-identical digits.");
+        String pinErr = BankValidator.pin(pin);
+        if (!pinErr.isEmpty()) {
+            valid &= show(errPIN, pinErr);
         } else if (!pin.equals(confirmPin)) {
-            errConfirmPIN.setText("PINs do not match.");
-            errors.add("PIN and Confirm PIN must match.");
+            valid &= show(errConfirmPIN, "PINs do not match.");
         }
 
-        // Validate Account Type and Branch
+        // Account Type and Branch are dropdowns, so just check something was picked
         String type = comboType.getValue();
         String branch = comboBranch.getValue();
-        if (type == null) {
-            errType.setText("Account Type is required.");
-            errors.add("Please select an Account Type.");
-        }
-        if (branch == null) {
-            errBranch.setText("Branch is required.");
-            errors.add("Please select a Branch.");
+        if (type == null) valid &= show(errType, "Account Type is required.");
+        if (branch == null) valid &= show(errBranch, "Branch is required.");
+
+        // Second NIN is only required for Joint accounts
+        String secondNin = txtSecondNIN.getText() == null ? "" : txtSecondNIN.getText().trim();
+        if ("Joint".equals(type)) {
+            valid &= show(errSecondNIN, BankValidator.secondNin(secondNin, nin));
         }
 
-        // Validate DOB and Age
+        // Date of birth and age
         Integer yearVal = comboYear.getValue();
         String monthStr = comboMonth.getValue();
         Integer dayVal = comboDay.getValue();
@@ -282,52 +270,34 @@ public class BankFormApp extends Application {
         int dobDay = dayVal != null ? dayVal : 1;
 
         if (yearVal == null || monthStr == null || dayVal == null) {
-            errDOB.setText("DOB is required.");
-            errors.add("Date of Birth is required.");
+            valid &= show(errDOB, "DOB is required.");
         } else {
             LocalDate birthDate = LocalDate.of(dobYear, dobMonth, dobDay);
-            LocalDate currentDate = LocalDate.now();
-            int age = Period.between(birthDate, currentDate).getYears();
-
-            if (age < 18 || age > 75) {
-                errDOB.setText("Age must be 18-75.");
-                errors.add("Age must be between 18 and 75 years inclusive (Current age: " + age + ").");
-            } else if ("Student".equals(type) && (age < 18 || age > 25)) {
-                errDOB.setText("Student age must be 18-25.");
-                errors.add("Student account applicants must be between 18 and 25 years old (Current age: " + age + ").");
-            }
+            int age = Period.between(birthDate, LocalDate.now()).getYears();
+            valid &= show(errDOB, BankValidator.age(age, type));
         }
 
-        // Validate Deposit
+        // Deposit: the form parses the number, the validator supplies the minimum
         String depositStr = txtDeposit.getText() == null ? "" : txtDeposit.getText().trim();
         double deposit = 0.0;
         if (depositStr.isEmpty()) {
-            errDeposit.setText("Deposit is required.");
-            errors.add("Opening Deposit is required.");
+            valid &= show(errDeposit, "Deposit is required.");
         } else {
             try {
                 deposit = Double.parseDouble(depositStr);
                 if (type != null) {
-                    double minDeposit = 0.0;
-                    if ("Savings".equals(type)) minDeposit = 50000.0;
-                    else if ("Student".equals(type)) minDeposit = 10000.0;
-                    else if ("Current".equals(type)) minDeposit = 200000.0;
-                    else if ("Fixed Deposit".equals(type)) minDeposit = 1000000.0;
-                    else if ("Joint".equals(type)) minDeposit = 100000.0;
-
+                    double minDeposit = BankValidator.minimumDeposit(type);
                     if (deposit < minDeposit) {
-                        errDeposit.setText("Min is " + String.format("%,.0f", minDeposit) + " UGX.");
-                        errors.add("Minimum deposit for " + type + " is " + String.format("%,.0f", minDeposit) + " UGX.");
+                        valid &= show(errDeposit, "Min is " + String.format("%,.0f", minDeposit) + " UGX.");
                     }
                 }
             } catch (NumberFormatException nfe) {
-                errDeposit.setText("Invalid number.");
-                errors.add("Please enter a valid number for the opening deposit.");
+                valid &= show(errDeposit, "Invalid number.");
             }
         }
 
         // we stop if validation has failed
-        if (!errors.isEmpty()) return;
+        if (!valid) return;
 
         try {
             // making unique account number from the branch code and its running count
@@ -361,7 +331,7 @@ public class BankFormApp extends Application {
                     account = new FixedDepositAccount(accNum, fName, lName, nin, email, phone, pin, dobYear, dobMonth, dobDay, branch, deposit);
                     break;
                 case "Joint":
-                    account = new JointAccount(accNum, fName, lName, nin, "N/A", email, phone, pin, dobYear, dobMonth, dobDay, branch, deposit);
+                    account = new JointAccount(accNum, fName, lName, nin, secondNin, email, phone, pin, dobYear, dobMonth, dobDay, branch, deposit);
                     break;
                 default:
                     throw new Exception("Invalid Account Type");
@@ -395,7 +365,8 @@ public class BankFormApp extends Application {
         comboMonth.setValue(null);
         comboDay.setValue(null);
         areaSummary.clear();
-
+        setSecondNINVisible(false); // hide the Joint-only field again
+        errSecondNIN.setText("");
     }
 
     public static void main(String[] args) {
